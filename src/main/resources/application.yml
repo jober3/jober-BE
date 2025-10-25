@@ -92,18 +92,6 @@ logging:
     com.example.final_projects.config.SwaggerCsrfBridgeFilter: DEBUG
     org.springframework.security.web.csrf: DEBUG
 
-resilience4j:
-  circuitbreaker:
-    instances:
-      aiService:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        failureRateThreshold: 50
-        waitDurationInOpenState: 10s
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-
 app:
   security:
     cors:
