@@ -4,6 +4,11 @@ import com.example.final_projects.exception.ErrorReason;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 @Getter
 public enum AiErrorCode implements BaseErrorCode {
     // AI 서버와 1:1 매핑
@@ -22,6 +27,21 @@ public enum AiErrorCode implements BaseErrorCode {
     private final ErrorReason errorReason;
 
     AiErrorCode(int status, String message) {this.errorReason = new ErrorReason(status, this.name(), message);}
+
+    private static final Map<String, AiErrorCode> codeMap = Arrays.stream(values())
+            .filter(code -> !code.isInternal()) // 내부 정의 코드는 제외
+            .collect(Collectors.toMap(
+                    code -> code.getErrorReason().getCode(),
+                    Function.identity()
+            ));
+
+    public static AiErrorCode fromCode(String code) {
+        return codeMap.getOrDefault(code, UNEXPECTED_AI_RESPONSE);
+    }
+
+    private boolean isInternal() {
+        return this == AI_REQUEST_FAILED || this == SERVICE_UNAVAILABLE || this == UNEXPECTED_AI_RESPONSE;
+    }
 
     @Override
     public ErrorReason getErrorReason() { return errorReason; }
