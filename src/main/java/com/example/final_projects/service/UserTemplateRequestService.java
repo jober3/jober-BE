@@ -41,4 +41,10 @@ public class UserTemplateRequestService {
         userRequest.setStatus(UserTemplateRequestStatus.FAILED);
         userTemplateRequestRepository.save(userRequest);
     }
+
+    @Transactional(readOnly = true)
+    public UserTemplateRequest findLatestPendingRequestByUserId(Long userId) {
+        return userTemplateRequestRepository.findFirstByUserIdAndStatusOrderByIdDesc(userId, UserTemplateRequestStatus.PENDING)
+                .orElse(null);
+    }
 }
