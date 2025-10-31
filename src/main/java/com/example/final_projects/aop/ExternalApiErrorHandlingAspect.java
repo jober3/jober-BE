@@ -46,7 +46,7 @@ public class ExternalApiErrorHandlingAspect {
             String rawErrorCodeString = rawError.getCode();
             String originalMessage = rawError.getMessage();
 
-            Method fromCodeMethod = errorCodeClass.getMethod("fromCode", String.class);
+            Method fromCodeMethod = errorCodeClass.getDeclaredMethod("fromCode", String.class);
             BaseErrorCode internalCode = (BaseErrorCode) fromCodeMethod.invoke(null, rawErrorCodeString);
 
             UserTemplateRequest userRequest = userTemplateRequestService.findLatestPendingRequestByUserId(userId);
