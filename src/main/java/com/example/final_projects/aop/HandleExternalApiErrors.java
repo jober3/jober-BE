@@ -13,4 +13,5 @@ import java.lang.annotation.Target;
 public @interface HandleExternalApiErrors {
     Class<? extends BaseErrorCode> errorCodeClass();
     Class<? extends BaseErrorResponse> errorDtoClass();
+    Class<? extends RuntimeException> exceptionClass();
 }

@@ -2,7 +2,6 @@ package com.example.final_projects.aop;
 
 import com.example.final_projects.dto.BaseErrorResponse;
 import com.example.final_projects.entity.UserTemplateRequest;
-import com.example.final_projects.exception.AiException;
 import com.example.final_projects.exception.RawExternalApiException;
 import com.example.final_projects.exception.code.BaseErrorCode;
 import com.example.final_projects.service.FailureLogService;
@@ -15,6 +14,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
 @Slf4j
@@ -41,6 +41,7 @@ public class ExternalApiErrorHandlingAspect {
 
             Class<? extends BaseErrorCode> errorCodeClass = annotation.errorCodeClass();
             Class<? extends BaseErrorResponse> errorDtoClass = annotation.errorDtoClass();
+            Class<? extends RuntimeException> exceptionClass = annotation.exceptionClass();
 
             BaseErrorResponse rawError = e.getRawErrorResponse(errorDtoClass);
             String rawErrorCodeString = rawError.getCode();
@@ -63,7 +64,9 @@ public class ExternalApiErrorHandlingAspect {
                 log.error("Could not find UserTemplateRequest for user {} to log failure.", userId);
             }
 
-            throw new AiException(internalCode, originalMessage);
+            Constructor<? extends RuntimeException> constructor =
+                    exceptionClass.getConstructor(BaseErrorCode.class, String.class);
+            throw constructor.newInstance(internalCode, originalMessage);
         }
     }
 }

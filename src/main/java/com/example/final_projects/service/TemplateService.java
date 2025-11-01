@@ -72,7 +72,8 @@ public class TemplateService {
 
     @HandleExternalApiErrors(
             errorCodeClass = AiErrorCode.class,
-            errorDtoClass = AiErrorResponse.class
+            errorDtoClass = AiErrorResponse.class,
+            exceptionClass = AiException.class
     )
     public TemplateCreationResult createTemplate(Long userId, TemplateCreateRequest request, String clientIp, String userAgent) {
         UserTemplateRequest userRequest = userTemplateRequestService.createInitialRequest(userId, request.getRequestContent());
