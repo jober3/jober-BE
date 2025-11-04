@@ -18,8 +18,8 @@ public class RestClientConfig {
     @Value("${rest.ai.base-url}")
     private String baseUrl;
 
-    @Bean
-    public RestClient restClient() {
+    @Bean("aiRestClient")
+    public RestClient aiRestClient(AiApiResponseErrorHandler aiApiResponseErrorHandler) {
         CloseableHttpClient httpClient = HttpClients.custom()
                 .evictExpiredConnections()
                 .evictIdleConnections(Timeout.ofSeconds(30))
@@ -35,6 +35,7 @@ public class RestClientConfig {
                 .baseUrl(baseUrl)
                 .requestFactory(factory)
                 .defaultHeader("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .defaultStatusHandler(aiApiResponseErrorHandler)
                 .build();
     }
 }

@@ -42,13 +42,3 @@ server:
     include-stacktrace: never
     include-message: never
   forward-headers-strategy: framework
-
-resilience4j:
-  circuitbreaker:
-    instances:
-      aiService:
-        slidingWindowSize: 50
-        minimumNumberOfCalls: 10
-        failureRateThreshold: 50
-        waitDurationInOpenState: 60s
-        permittedNumberOfCallsInHalfOpenState: 5

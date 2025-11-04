@@ -1,9 +1,11 @@
 package com.example.final_projects.service;
 
+import com.example.final_projects.aop.HandleExternalApiErrors;
 import com.example.final_projects.dto.PageResponse;
 import com.example.final_projects.dto.template.*;
 import com.example.final_projects.entity.*;
 import com.example.final_projects.exception.AiException;
+import com.example.final_projects.exception.RawExternalApiException;
 import com.example.final_projects.exception.TemplateException;
 import com.example.final_projects.exception.code.AiErrorCode;
 import com.example.final_projects.exception.code.TemplateErrorCode;
@@ -11,6 +13,7 @@ import com.example.final_projects.repository.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -25,23 +28,20 @@ public class TemplateService {
 
     private final TemplateRepository templateRepository;
     private final TemplateHistoryRepository templateHistoryRepository;
-    private final AiRestClient aiRestClient;
-    private final FailureLogService failureLogService;
+    private final AiApiClient aiApiClient;
     private final UserTemplateRequestService userTemplateRequestService;
     private final TemplateFactory templateFactory;
 
     public TemplateService(
             TemplateRepository templateRepository,
             TemplateHistoryRepository templateHistoryRepository,
-            AiRestClient aiRestClient,
-            FailureLogService failureLogService,
+            AiApiClient aiApiClient,
             UserTemplateRequestService userTemplateRequestService,
             TemplateFactory templateFactory
     ) {
         this.templateRepository = templateRepository;
         this.templateHistoryRepository = templateHistoryRepository;
-        this.aiRestClient = aiRestClient;
-        this.failureLogService = failureLogService;
+        this.aiApiClient = aiApiClient;
         this.userTemplateRequestService = userTemplateRequestService;
         this.templateFactory = templateFactory;
     }
@@ -70,33 +70,52 @@ public class TemplateService {
         return TemplateResponse.from(template);
     }
 
+    @HandleExternalApiErrors(
+            errorCodeClass = AiErrorCode.class,
+            errorDtoClass = AiErrorResponse.class,
+            exceptionClass = AiException.class
+    )
     public TemplateCreationResult createTemplate(Long userId, TemplateCreateRequest request, String clientIp, String userAgent) {
         UserTemplateRequest userRequest = userTemplateRequestService.createInitialRequest(userId, request.getRequestContent());
 
-        ResponseEntity<AiApiResponse<AiTemplateResponse>> responseEntity = aiRestClient.createTemplate(userRequest);
+        ResponseEntity<AiApiResponse<AiTemplateResponse>> responseEntity = aiApiClient.createTemplate(userRequest);
 
-        AiApiResponse<AiTemplateResponse> aiResponseWrapper = responseEntity.getBody();
+        if (responseEntity.getStatusCode().is2xxSuccessful()) {
+            return handleSuccessResponse(responseEntity, userRequest, userId);
+        } else {
+            AiErrorResponse rawError = responseEntity.getBody() != null ? responseEntity.getBody().error() : null;
+            HttpStatusCode statusCode = responseEntity.getStatusCode();
 
-        if (aiResponseWrapper == null || aiResponseWrapper.data() == null) {
-            userTemplateRequestService.markAsFailed(userRequest.getId());
-            failureLogService.saveFailureLog(userRequest.getId(), "EMPTY_RESPONSE", "AI response body is null.", 1, userAgent, clientIp, responseEntity.getStatusCode().value(), 0L);
-            throw new AiException(AiErrorCode.AI_REQUEST_FAILED, "AI response body is null.");
+            throw new RawExternalApiException(
+                    HttpStatus.valueOf(statusCode.value()),
+                    rawError,
+                    "Fallback executed for user: " + userId
+            );
         }
+    }
 
-        AiTemplateResponse aiTemplateData = aiResponseWrapper.data();
+    private TemplateCreationResult handleSuccessResponse(
+            ResponseEntity<AiApiResponse<AiTemplateResponse>> responseEntity,
+            UserTemplateRequest userRequest,
+            Long userId) {
+
+        AiApiResponse<AiTemplateResponse> body = responseEntity.getBody();
+        if (body == null || body.data() == null) {
+            throw new AiException(AiErrorCode.UNEXPECTED_AI_RESPONSE, "AI service returned a success status but with an empty body.");
+        }
+        AiTemplateResponse aiTemplateData = body.data();
 
         if (responseEntity.getStatusCode() == HttpStatus.OK) {
             Template template = templateFactory.createFrom(userId, aiTemplateData, userRequest);
             saveTemplateHistory(template);
             userTemplateRequestService.markAsCompleted(userRequest.getId());
             return new TemplateCreationResult.Complete(TemplateResponse.from(template));
-        }
-        else if (responseEntity.getStatusCode() == HttpStatus.ACCEPTED) {
+
+        } else if (responseEntity.getStatusCode() == HttpStatus.ACCEPTED) {
             return new TemplateCreationResult.Incomplete(aiTemplateData);
         }
-        else {
-            throw new IllegalStateException("Unexpected success status code: " + responseEntity.getStatusCode());
-        }
+
+        throw new AiException(AiErrorCode.UNEXPECTED_AI_RESPONSE, "Unexpected success status code: " + responseEntity.getStatusCode());
     }
 
     private void saveTemplateHistory(Template template) {

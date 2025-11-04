@@ -1,16 +1,6 @@
 jwt:
   secret: bqRgdYiJ8PphtR0lZhoo8Rzch+TJechjMOyF9+j8pSQ=
 
-resilience4j:
-  circuitbreaker:
-    instances:
-      aiService:
-        slidingWindowSize: 3
-        minimumNumberOfCalls: 1
-        failureRateThreshold: 50
-        waitDurationInOpenState: 1s
-        permittedNumberOfCallsInHalfOpenState: 1
-
 spring:
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1

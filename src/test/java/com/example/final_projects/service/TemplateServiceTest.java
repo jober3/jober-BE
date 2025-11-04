@@ -1,9 +1,8 @@
 package com.example.final_projects.service;
 
 import com.example.final_projects.dto.template.TemplateCreateRequest;
-import com.example.final_projects.entity.Template;
-import com.example.final_projects.entity.UserTemplateRequest;
-import com.example.final_projects.entity.UserTemplateRequestStatus;
+import com.example.final_projects.entity.*;
+import com.example.final_projects.repository.TemplateHistoryRepository;
 import com.example.final_projects.repository.TemplateRepository;
 import com.example.final_projects.repository.UserTemplateRequestRepository;
 import com.example.final_projects.support.MailService;
@@ -24,6 +23,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -39,6 +40,8 @@ class TemplateServiceTest {
     private UserTemplateRequestRepository userTemplateRequestRepository;
     @Autowired
     private TemplateRepository templateRepository;
+    @Autowired
+    private TemplateHistoryRepository templateHistoryRepository;
 
     @TestConfiguration
     static class TestConfig {
@@ -133,6 +136,14 @@ class TemplateServiceTest {
         // 7. ManyToMany 관계인 Purpose가 올바르게 연결되었는지 검증
         assertThat(savedTemplate.getPurposes()).hasSize(1);
         assertThat(savedTemplate.getPurposes().iterator().next().getName()).isEqualTo("예약");
+
+        // 8. TemplateHistory에 'CREATED' 상태의 기록이 저장되었는지 검증
+        List<TemplateHistory> histories = templateHistoryRepository.findByTemplateId(savedTemplate.getId());
+        assertThat(histories).hasSize(1);
+
+        TemplateHistory savedHistory = histories.getFirst();
+        assertThat(savedHistory.getTemplate().getId()).isEqualTo(savedTemplate.getId());
+        assertThat(savedHistory.getStatus()).isEqualTo(TemplateStatus.CREATED);
     }
 
     @Test

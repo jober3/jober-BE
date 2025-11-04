@@ -2,6 +2,7 @@ package com.example.final_projects.exception;
 
 import com.example.final_projects.dto.ApiResult;
 import com.example.final_projects.dto.ErrorResponse;
+import com.example.final_projects.exception.code.AiErrorCode;
 import com.example.final_projects.exception.code.BaseErrorCode;
 import com.example.final_projects.exception.user.UserErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -110,10 +111,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AiException.class)
     public ResponseEntity<ApiResult<Object>> handleAiException(AiException ex) {
         BaseErrorCode errorCode = ex.getErrorCode();
+        String responseMessage;
+
+        // 내부 통제가 필요한 특정 에러 코드인지 확인
+        if (errorCode == AiErrorCode.UNEXPECTED_AI_RESPONSE ||
+                errorCode == AiErrorCode.AI_REQUEST_FAILED ||
+                errorCode == AiErrorCode.SERVICE_UNAVAILABLE) {
+            responseMessage = errorCode.getErrorReason().getMessage();
+        } else {
+            // 그 외의 모든 경우에는 AI 서버가 보내준 원본 메시지를 그대로 사용
+            responseMessage = ex.getMessage();
+        }
+
         return buildErrorResponse(
                 HttpStatus.valueOf(errorCode.getErrorReason().getStatus()),
                 errorCode.getErrorReason().getCode(),
-                errorCode.getErrorReason().getMessage()
+                responseMessage
         );
     }
 }
