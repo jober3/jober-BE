@@ -6,6 +6,7 @@ import com.example.final_projects.exception.RawExternalApiException;
 import com.example.final_projects.exception.code.BaseErrorCode;
 import com.example.final_projects.service.FailureLogService;
 import com.example.final_projects.service.UserTemplateRequestService;
+import com.example.final_projects.util.EnumMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -15,7 +16,6 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 
 @Slf4j
 @Aspect
@@ -39,7 +39,6 @@ public class ExternalApiErrorHandlingAspect {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             HandleExternalApiErrors annotation = signature.getMethod().getAnnotation(HandleExternalApiErrors.class);
 
-            Class<? extends BaseErrorCode> errorCodeClass = annotation.errorCodeClass();
             Class<? extends BaseErrorResponse> errorDtoClass = annotation.errorDtoClass();
             Class<? extends RuntimeException> exceptionClass = annotation.exceptionClass();
 
@@ -47,8 +46,7 @@ public class ExternalApiErrorHandlingAspect {
             String rawErrorCodeString = rawError.getCode();
             String originalMessage = rawError.getMessage();
 
-            Method fromCodeMethod = errorCodeClass.getDeclaredMethod("fromCode", String.class);
-            BaseErrorCode internalCode = (BaseErrorCode) fromCodeMethod.invoke(null, rawErrorCodeString);
+            BaseErrorCode internalCode = resolveErrorCode(annotation.errorCodeClass(), rawErrorCodeString);
 
             UserTemplateRequest userRequest = userTemplateRequestService.findLatestPendingRequestByUserId(userId);
 
@@ -68,5 +66,13 @@ public class ExternalApiErrorHandlingAspect {
                     exceptionClass.getConstructor(BaseErrorCode.class, String.class);
             throw constructor.newInstance(internalCode, originalMessage);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends Enum<T> & BaseErrorCode> BaseErrorCode resolveErrorCode(Class<? extends BaseErrorCode> clazz, String code) {
+        Class<T> enumClass = (Class<T>) clazz;
+
+        return EnumMapper.fromCode(enumClass, code)
+                .orElseGet(() -> EnumMapper.getFallback(enumClass));
     }
 }
