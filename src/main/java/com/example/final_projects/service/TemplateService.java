@@ -17,13 +17,14 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-@Transactional
 public class TemplateService {
 
     private final TemplateRepository templateRepository;
@@ -31,19 +32,22 @@ public class TemplateService {
     private final AiApiClient aiApiClient;
     private final UserTemplateRequestService userTemplateRequestService;
     private final TemplateFactory templateFactory;
+    private final TransactionTemplate transactionTemplate;
 
     public TemplateService(
             TemplateRepository templateRepository,
             TemplateHistoryRepository templateHistoryRepository,
             AiApiClient aiApiClient,
             UserTemplateRequestService userTemplateRequestService,
-            TemplateFactory templateFactory
+            TemplateFactory templateFactory,
+            PlatformTransactionManager transactionManager
     ) {
         this.templateRepository = templateRepository;
         this.templateHistoryRepository = templateHistoryRepository;
         this.aiApiClient = aiApiClient;
         this.userTemplateRequestService = userTemplateRequestService;
         this.templateFactory = templateFactory;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Transactional(readOnly = true)
@@ -81,7 +85,9 @@ public class TemplateService {
         ResponseEntity<AiApiResponse<AiTemplateResponse>> responseEntity = aiApiClient.createTemplate(userRequest);
 
         if (responseEntity.getStatusCode().is2xxSuccessful()) {
-            return handleSuccessResponse(responseEntity, userRequest, userId);
+            return transactionTemplate.execute(status ->
+                    handleSuccessResponse(responseEntity, userRequest, userId)
+            );
         } else {
             AiErrorResponse rawError = responseEntity.getBody() != null ? responseEntity.getBody().error() : null;
             HttpStatusCode statusCode = responseEntity.getStatusCode();
