@@ -102,7 +102,7 @@ class TemplateServiceTest {
                         .withBody(mockAiResponseJson)));
 
         // when: 실제 서비스 로직 실행
-        TemplateCreationResult result = templateService.createTemplate(userId, createRequest, "127.0.0.1", "test-agent");
+        TemplateCreationResult result = templateService.createTemplate(userId, createRequest);
 
         // then: 결과 검증
         assertInstanceOf(TemplateCreationResult.Complete.class, result);
@@ -177,7 +177,7 @@ class TemplateServiceTest {
                         .withBody(mockAiResponseJson)));
 
         // when: 실제 서비스 로직 실행
-        TemplateCreationResult result = templateService.createTemplate(userId, createRequest, "127.0.0.1", "test-agent");
+        TemplateCreationResult result = templateService.createTemplate(userId, createRequest);
 
         // then: 결과 검증
         // 1. 반환된 결과가 'Incomplete' 타입인지 확인

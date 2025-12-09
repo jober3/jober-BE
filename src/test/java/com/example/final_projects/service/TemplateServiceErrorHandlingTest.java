@@ -84,11 +84,15 @@ class TemplateServiceErrorHandlingTest {
                         .withStatus(400)
                         .withHeader("Content-Type", "application/json")
                         .withBody("{\"error\": {\"code\": \"POLICY_VIOLATION\", \"message\": \"" + originalMessage + "\"}}")));
+        String testIp = "123.45.67.89";
+        String testUa = "Mozilla/5.0 (IntegrationTest)";
 
         // when: 컨트롤러의 템플릿 생성 API를 호출
         ResultActions resultActions = mockMvc.perform(post("/api/templates")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"requestContent\": \"무료 증정 이벤트\"}")
+                .header("X-Forwarded-For", testIp)
+                .header("User-Agent", testUa)
                 .with(csrf()));
 
         // then (1): 프론트엔드에 전달되는 응답 검증
@@ -108,6 +112,8 @@ class TemplateServiceErrorHandlingTest {
         UserTemplateRequestFailureLog savedLog = logs.getFirst();
         assertThat(savedLog.getErrorCode()).isEqualTo("POLICY_VIOLATION");
         assertThat(savedLog.getErrorDetail()).isEqualTo("[Original Code: POLICY_VIOLATION] " + originalMessage);
+        assertThat(savedLog.getClientIp()).isEqualTo(testIp);
+        assertThat(savedLog.getUserAgent()).isEqualTo(testUa);
         assertThat(savedLog.getHttpStatusCode()).isEqualTo(400);
     }
 

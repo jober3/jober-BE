@@ -75,7 +75,7 @@ public class TemplateService {
             errorDtoClass = AiErrorResponse.class,
             exceptionClass = AiException.class
     )
-    public TemplateCreationResult createTemplate(Long userId, TemplateCreateRequest request, String clientIp, String userAgent) {
+    public TemplateCreationResult createTemplate(Long userId, TemplateCreateRequest request) {
         UserTemplateRequest userRequest = userTemplateRequestService.createInitialRequest(userId, request.getRequestContent());
 
         ResponseEntity<AiApiResponse<AiTemplateResponse>> responseEntity = aiApiClient.createTemplate(userRequest);
