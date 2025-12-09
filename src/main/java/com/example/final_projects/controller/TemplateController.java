@@ -56,17 +56,11 @@ public class TemplateController {
     @PostMapping
     public ResponseEntity<?> createTemplate(
             @AuthenticationPrincipal CustomUserPrincipal principal,
-            @RequestBody TemplateCreateRequest templateCreateRequest,
-            HttpServletRequest httpServletRequest
+            @RequestBody TemplateCreateRequest templateCreateRequest
     ) {
-        String clientIp = httpServletRequest.getRemoteAddr();
-        String userAgent = httpServletRequest.getHeader("User-Agent");
-
         TemplateCreationResult result = templateService.createTemplate(
                 principal.getId(),
-                templateCreateRequest,
-                clientIp,
-                userAgent
+                templateCreateRequest
         );
 
         return switch (result) {
